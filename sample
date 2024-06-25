@@ -1,0 +1,62 @@
+import React, { useState } from 'react';
+import axios from 'axios';
+import Papa from 'papaparse';
+
+function App() {
+  const [columns, setColumns] = useState([]);
+  const [file, setFile] = useState(null);
+
+  const handleFileChange = (event) => {
+    setFile(event.target.files[0]);
+    Papa.parse(event.target.files[0], {
+      complete: (results) => {
+        const columnNames = results.data[0]; // Assuming first row is headers
+        setColumns(columnNames.map(name => ({ name, type: 'String' })));
+      },
+      header: false,
+      preview: 1 // Only parse the first row for headers
+    });
+  };
+
+  const handleTypeChange = (index, type) => {
+    const newColumns = [...columns];
+    newColumns[index].type = type;
+    setColumns(newColumns);
+  };
+
+  const handleSubmit = async () => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('metadata', JSON.stringify(columns));
+    try {
+      const response = await axios.post('http://localhost:8000/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log('Response:', response.data);
+    } catch (error) {
+      console.error('Error:', error.response);
+    }
+  };
+
+  return (
+    <div>
+      <input type="file" accept=".csv" onChange={handleFileChange} />
+      {columns.map((column, index) => (
+        <div key={index}>
+          {column.name}: 
+          <select value={column.type} onChange={(e) => handleTypeChange(index, e.target.value)}>
+            <option value="String">String</option>
+            <option value="Number">Number</option>
+            <option value="Boolean">Boolean</option>
+            <option value="Date">Date</option>
+          </select>
+        </div>
+      ))}
+      <button onClick={handleSubmit}>Save</button>
+    </div>
+  );
+}
+
+export default App;
