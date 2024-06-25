@@ -41,22 +41,58 @@ function App() {
   };
 
   return (
-    <div>
-      <input type="file" accept=".csv" onChange={handleFileChange} />
-      {columns.map((column, index) => (
-        <div key={index}>
-          {column.name}: 
-          <select value={column.type} onChange={(e) => handleTypeChange(index, e.target.value)}>
-            <option value="String">String</option>
-            <option value="Number">Number</option>
-            <option value="Boolean">Boolean</option>
-            <option value="Date">Date</option>
-          </select>
-        </div>
-      ))}
-      <button onClick={handleSubmit}>Save</button>
+    <div className="p-8">
+      <div className="mb-4">
+        <input type="file" accept=".csv" onChange={handleFileChange} className="input file-input"/>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left text-gray-500">
+          <thead className="text-xs text-gray-700 uppercase bg-primary text-white">
+            <tr>
+              <th scope="col" className="px-6 py-3">Column Name</th>
+              <th scope="col" className="px-6 py-3">Data Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            {columns.map((column, index) => (
+              <tr key={index} className="bg-white border-b">
+                <td className="px-6 py-4">{column.name}</td>
+                <td className="px-6 py-4">
+                  <select value={column.type} onChange={(e) => handleTypeChange(index, e.target.value)} className="input select-input">
+                    <option value="String">String</option>
+                    <option value="Number">Number</option>
+                    <option value="Boolean">Boolean</option>
+                    <option value="Date">Date</option>
+                  </select>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <button onClick={handleSubmit} className="mt-4 btn bg-primary text-white">Save</button>
     </div>
   );
 }
 
 export default App;
+
+
+
+///// config js
+module.exports = {
+  mode: 'jit',
+  purge: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
+  darkMode: false, // or 'media' or 'class'
+  theme: {
+    extend: {
+      colors: {
+        'primary': '#022e6c',
+      },
+    },
+  },
+  variants: {
+    extend: {},
+  },
+  plugins: [],
+}
