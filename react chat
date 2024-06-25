@@ -20,8 +20,12 @@ function DatabaseChatInterface() {
     }
   };
 
-  const handleTableSelect = (tableName) => {
-    setSelectedTables(prev => [...prev, tableName]);
+  const handleTableSelectionChange = (tableName) => {
+    if (selectedTables.includes(tableName)) {
+      setSelectedTables(selectedTables.filter(t => t !== tableName));
+    } else {
+      setSelectedTables([...selectedTables, tableName]);
+    }
   };
 
   const handleSendMessage = async () => {
@@ -42,11 +46,19 @@ function DatabaseChatInterface() {
     <div className="flex">
       <div className="w-1/4 p-4 border-r">
         <h2 className="font-bold mb-4">Tables</h2>
-        {tables.map(table => (
-          <div key={table} onClick={() => handleTableSelect(table)} className="cursor-pointer hover:bg-gray-200 p-2 rounded">
-            {table}
-          </div>
-        ))}
+        <div className="space-y-2">
+          {tables.map(table => (
+            <div key={table} className="flex items-center">
+              <input
+                type="checkbox"
+                checked={selectedTables.includes(table)}
+                onChange={() => handleTableSelectionChange(table)}
+                className="mr-2"
+              />
+              <label className="cursor-pointer">{table}</label>
+            </div>
+          ))}
+        </div>
       </div>
       <div className="w-3/4 p-4">
         <div className="h-3/4 overflow-auto mb-4">
