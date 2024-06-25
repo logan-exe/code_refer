@@ -1,0 +1,52 @@
+from fastapi import FastAPI, HTTPException, Form, APIRouter
+import sqlite3
+import json
+import openai
+
+app = FastAPI()
+openai.api_key = 'your_openai_api_key'
+
+DB_NAME = "mydatabase.db"
+
+@app.post("/generate_sql")
+async def generate_sql(prompt: str = Form(...), table_names: str = Form(...)):
+    """Endpoint to generate SQL queries based on user prompts and selected table names."""
+    # Convert table_names from string to list
+    selected_tables = json.loads(table_names)
+
+    # Fetch metadata for selected tables
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    metadata = {}
+    for table in selected_tables:
+        cursor.execute("SELECT metadata FROM tables_metadata WHERE table_name = ?", (table,))
+        result = cursor.fetchone()
+        if result:
+            metadata[table] = json.loads(result[0])
+        else:
+            conn.close()
+            raise HTTPException(status_code=404, detail=f"Metadata for table {table} not found")
+    
+    conn.close()
+
+    # Prepare the context for the OpenAI model
+    context = f"Generate an SQL query for the following tables and their columns:\n"
+    for table, meta in metadata.items():
+        context += f"Table {table}: Columns {', '.join([col['name'] for col in meta])}\n"
+    context += f"Prompt: {prompt}"
+
+    # Call OpenAI API
+    try:
+        response = openai.Completion.create(
+            engine="davinci-codex",
+            prompt=context,
+            max_tokens=150,
+            stop=[";"]
+        )
+        return {"query": response.choices[0].text.strip()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
