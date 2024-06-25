@@ -1,0 +1,59 @@
+from fastapi import FastAPI, File, Form, UploadFile
+from typing import List
+import sqlite3
+import pandas as pd
+import json
+
+app = FastAPI()
+
+# Database setup
+DB_NAME = "mydatabase.db"
+
+def init_db():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    # Create metadata table if it does not exist
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS tables_metadata (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            table_name TEXT,
+            metadata TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+
+@app.post("/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    metadata: str = Form(...),
+    tableName: str = Form(...)
+):
+    # Load metadata
+    metadata_json = json.loads(metadata)
+    data = pd.read_csv(file.file)  # Using pandas to handle CSV
+
+    # Connect to the database
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    # Create a new table based on metadata
+    columns_types = ", ".join([f"{col['name']} {col['type'].upper()}" for col in metadata_json])
+    cursor.execute(f"CREATE TABLE IF NOT EXISTS {tableName} ({columns_types})")
+
+    # Insert CSV data into the table
+    data.to_sql(tableName, conn, if_exists='replace', index=False)
+
+    # Insert metadata entry
+    cursor.execute("INSERT INTO tables_metadata (table_name, metadata) VALUES (?, ?)", (tableName, json.dumps(metadata_json)))
+
+    conn.commit()
+    conn.close()
+
+    return {"message": "File uploaded and database updated", "tableName": tableName}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
