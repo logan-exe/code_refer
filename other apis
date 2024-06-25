@@ -1,0 +1,26 @@
+@app.get("/tables")
+def get_all_tables():
+    """Endpoint to get all table names."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
+    tables = cursor.fetchall()
+    conn.close()
+    # Extract table names from tuples
+    table_names = [table[0] for table in tables if table[0] != 'tables_metadata']
+    return {"tables": table_names}
+
+@app.get("/metadata/{table_name}")
+def get_table_metadata(table_name: str):
+    """Endpoint to get metadata of a specific table."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT metadata FROM tables_metadata WHERE table_name = ?", (table_name,))
+        metadata = cursor.fetchone()
+        if metadata:
+            return {"table_name": table_name, "metadata": json.loads(metadata[0])}
+        else:
+            raise HTTPException(status_code=404, detail="Table not found")
+    finally:
+        conn.close()
