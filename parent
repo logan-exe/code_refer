@@ -1,0 +1,26 @@
+import React from 'react';
+
+function StartComponent({ onAddCsv, onConnectDatabase }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-4">
+      <h1 className="text-3xl font-bold text-primary mb-6">My Project</h1>
+      <div className="bg-white border border-gray-200 shadow-lg p-8 rounded-lg">
+        <h2 className="text-xl font-semibold mb-4 text-gray-800">Get Started</h2>
+        <button
+          onClick={onAddCsv}
+          className="w-full bg-primary text-white font-semibold py-2 px-4 rounded hover:bg-blue-800 transition duration-300 ease-in-out mb-4"
+        >
+          Add CSV
+        </button>
+        <button
+          onClick={onConnectDatabase}
+          className="w-full bg-primary text-white font-semibold py-2 px-4 rounded hover:bg-blue-800 transition duration-300 ease-in-out"
+        >
+          Connect Database
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default StartComponent;
