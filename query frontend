@@ -1,0 +1,59 @@
+import React, { useState } from 'react';
+import axios from 'axios';
+
+function SQLExecutor() {
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState(null);
+    const [error, setError] = useState('');
+
+    const handleQueryChange = (event) => {
+        setQuery(event.target.value);
+    };
+
+    const executeQuery = async () => {
+        try {
+            const response = await axios.post('http://localhost:8000/execute_query/', { sql: query });
+            setResults(response.data);
+            setError('');
+        } catch (err) {
+            setError(err.response?.data?.detail || 'Unexpected error');
+            setResults(null);
+        }
+    };
+
+    return (
+        <div>
+            <textarea value={query} onChange={handleQueryChange} rows="4" className="border p-2 w-full" />
+            <button onClick={executeQuery} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Execute
+            </button>
+            {error && <p className="text-red-500">{error}</p>}
+            {results && (
+                <table className="min-w-full leading-normal mt-8">
+                    <thead>
+                        <tr>
+                            {results.columns.map((column, index) => (
+                                <th key={index} className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    {column}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {results.data.map((row, index) => (
+                            <tr key={index}>
+                                {row.map((cell, idx) => (
+                                    <td key={idx} className="px-5 py-2 border-b border-gray-200 bg-white text-sm">
+                                        {cell}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
+        </div>
+    );
+}
+
+export default SQLExecutor;
