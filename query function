@@ -1,0 +1,12 @@
+@app.post("/execute_query/")
+async def execute_query(query: Query):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        cursor.execute(query.sql)
+        rows = cursor.fetchall()
+        return {"data": rows, "columns": [description[0] for description in cursor.description]}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        conn.close()
