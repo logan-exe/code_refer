@@ -7,6 +7,7 @@ interface Condition {
   left: string;
   operator: string;
   right: string;
+  connector?: string;
 }
 
 interface ConditionNode {
@@ -21,11 +22,11 @@ const ConditionBuilder: React.FC = () => {
   const [conditions, setConditions] = useState<ConditionNode[]>([]);
   const [jsonOutput, setJsonOutput] = useState<string>('');
 
-  const addCondition = (parentId: string | null, type: string) => {
+  const addCondition = (parentId: string | null, type: string = 'if') => {
     const newCondition: ConditionNode = {
       id: uuidv4(),
       type: type,
-      conditions: [{ id: uuidv4(), left: '', operator: '', right: '' }],
+      conditions: [{ id: uuidv4(), left: '', operator: '', right: '', connector: 'and' }],
       action: '',
       children: []
     };
@@ -99,7 +100,7 @@ const ConditionBuilder: React.FC = () => {
   };
 
   const addConditionPart = (nodeId: string) => {
-    const updatedConditions = addNestedConditionPart(conditions, nodeId, { id: uuidv4(), left: '', operator: '', right: '' });
+    const updatedConditions = addNestedConditionPart(conditions, nodeId, { id: uuidv4(), left: '', operator: '', right: '', connector: 'and' });
     setConditions(updatedConditions);
   };
 
@@ -130,6 +131,43 @@ const ConditionBuilder: React.FC = () => {
     }));
   };
 
+  const deleteConditionPart = (nodeId: string, conditionId: string) => {
+    const updatedConditions = conditions.map(node => {
+      if (node.id === nodeId) {
+        return {
+          ...node,
+          conditions: node.conditions.filter(condition => condition.id !== conditionId)
+        };
+      } else if (node.children.length > 0) {
+        return {
+          ...node,
+          children: deleteConditionPartRecursive(node.children, nodeId, conditionId)
+        };
+      } else {
+        return node;
+      }
+    });
+    setConditions(updatedConditions);
+  };
+
+  const deleteConditionPartRecursive = (nodes: ConditionNode[], nodeId: string, conditionId: string): ConditionNode[] => {
+    return nodes.map(node => {
+      if (node.id === nodeId) {
+        return {
+          ...node,
+          conditions: node.conditions.filter(condition => condition.id !== conditionId)
+        };
+      } else if (node.children.length > 0) {
+        return {
+          ...node,
+          children: deleteConditionPartRecursive(node.children, nodeId, conditionId)
+        };
+      } else {
+        return node;
+      }
+    });
+  };
+
   const renderConditions = (nodes: ConditionNode[], level = 0): JSX.Element[] => {
     return nodes.map(node => (
       <div key={node.id} className="card mt-3" style={{ marginLeft: level * 20 + 'px' }}>
@@ -142,39 +180,57 @@ const ConditionBuilder: React.FC = () => {
               <option value="default">DEFAULT</option>
             </select>
           </div>
-          {node.type !== 'else' && node.type !== 'default' && node.conditions.map(condition => (
-            <div key={condition.id} className="form-row align-items-center mb-2">
-              <div className="col">
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Condition Left"
-                  value={condition.left}
-                  onChange={(e) => updateConditionPart(node.id, condition.id, 'left', e.target.value)}
-                />
-              </div>
-              <div className="col">
-                <select
-                  className="form-control"
-                  value={condition.operator}
-                  onChange={(e) => updateConditionPart(node.id, condition.id, 'operator', e.target.value)}
-                >
-                  <option value="==">==</option>
-                  <option value="!=">!=</option>
-                  {/* <option value=">">></option>
-                  <option value="<"><</option>
-                  <option value=">=">>=</option>
-                  <option value="<="><=</option> */}
-                </select>
-              </div>
-              <div className="col">
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Condition Right"
-                  value={condition.right}
-                  onChange={(e) => updateConditionPart(node.id, condition.id, 'right', e.target.value)}
-                />
+          {node.type !== 'else' && node.type !== 'default' && node.conditions.map((condition, index) => (
+            <div key={condition.id} className="mb-2">
+              <label>Condition {index + 1}:</label>
+              <div className="form-row align-items-center">
+                <div className="col">
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Condition Left"
+                    value={condition.left}
+                    onChange={(e) => updateConditionPart(node.id, condition.id, 'left', e.target.value)}
+                  />
+                </div>
+                <div className="col">
+                  <select
+                    className="form-control"
+                    value={condition.operator}
+                    onChange={(e) => updateConditionPart(node.id, condition.id, 'operator', e.target.value)}
+                  >
+                    <option value="==">==</option>
+                    <option value="!=">!=</option>
+                    {/* <option value=">">></option>
+                    <option value="<"><</option>
+                    <option value=">=">>=</option>
+                    <option value="<="><=</option> */}
+                  </select>
+                </div>
+                <div className="col">
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Condition Right"
+                    value={condition.right}
+                    onChange={(e) => updateConditionPart(node.id, condition.id, 'right', e.target.value)}
+                  />
+                </div>
+                {index < node.conditions.length - 1 && (
+                  <div className="col">
+                    <select
+                      className="form-control"
+                      value={condition.connector}
+                      onChange={(e) => updateConditionPart(node.id, condition.id, 'connector', e.target.value)}
+                    >
+                      <option value="and">and</option>
+                      <option value="or">or</option>
+                    </select>
+                  </div>
+                )}
+                <div className="col-auto">
+                  <button className="btn btn-danger btn-sm" onClick={() => deleteConditionPart(node.id, condition.id)}>Delete</button>
+                </div>
               </div>
             </div>
           ))}
@@ -182,6 +238,7 @@ const ConditionBuilder: React.FC = () => {
             <button className="btn btn-secondary btn-sm mb-2" onClick={() => addConditionPart(node.id)}>Add Condition</button>
           )}
           <div className="form-group mt-2">
+            <label>Then:</label>
             <input
               type="text"
               className="form-control"
@@ -191,10 +248,7 @@ const ConditionBuilder: React.FC = () => {
             />
           </div>
           <div>
-            <button className="btn btn-primary btn-sm mr-2" onClick={() => addCondition(node.id, 'if')}>Add IF</button>
-            <button className="btn btn-primary btn-sm mr-2" onClick={() => addCondition(node.id, 'elseif')}>Add ELSE IF</button>
-            <button className="btn btn-primary btn-sm mr-2" onClick={() => addCondition(node.id, 'else')}>Add ELSE</button>
-            <button className="btn btn-primary btn-sm mr-2" onClick={() => addCondition(node.id, 'default')}>Add DEFAULT</button>
+            <button className="btn btn-primary btn-sm mr-2" onClick={() => addCondition(node.id)}>Add Group</button>
             <button className="btn btn-danger btn-sm" onClick={() => deleteCondition(node.id)}>Delete</button>
           </div>
           {node.children.length > 0 && renderConditions(node.children, level + 1)}
@@ -207,7 +261,10 @@ const ConditionBuilder: React.FC = () => {
     const createJSON = (nodes: ConditionNode[]): any => {
       let result: any = {};
       nodes.forEach(node => {
-        const conditionStrings = node.conditions.map(condition => `${condition.left} ${condition.operator} ${condition.right}`).join(' and ');
+        const conditionStrings = node.conditions.map((condition, index) => {
+          const connector = index > 0 ? ` ${node.conditions[index - 1].connector} ` : '';
+          return `${connector}${condition.left} ${condition.operator} ${condition.right}`;
+        }).join('');
         let innerResult: any = {
           condition: conditionStrings,
           action: node.action
@@ -226,7 +283,7 @@ const ConditionBuilder: React.FC = () => {
 
   return (
     <div className="container mt-5">
-      <button className="btn btn-success" onClick={() => addCondition(null, 'if')}>Add Statement</button>
+      <button className="btn btn-success" onClick={() => addCondition(null)}>Add Statement</button>
       {renderConditions(conditions)}
       <button className="btn btn-warning mt-3" onClick={generateJSON}>Generate JSON</button>
       {jsonOutput && (
