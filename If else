@@ -26,7 +26,7 @@ const ConditionBuilder: React.FC = () => {
     const newCondition: ConditionNode = {
       id: uuidv4(),
       type: type,
-      conditions: [{ id: uuidv4(), left: '', operator: '', right: '', connector: 'and' }],
+      conditions: [{ id: uuidv4(), left: '', operator: '==', right: '', connector: 'and' }],
       action: '',
       children: []
     };
@@ -100,7 +100,7 @@ const ConditionBuilder: React.FC = () => {
   };
 
   const addConditionPart = (nodeId: string) => {
-    const updatedConditions = addNestedConditionPart(conditions, nodeId, { id: uuidv4(), left: '', operator: '', right: '', connector: 'and' });
+    const updatedConditions = addNestedConditionPart(conditions, nodeId, { id: uuidv4(), left: '', operator: '==', right: '', connector: 'and' });
     setConditions(updatedConditions);
   };
 
