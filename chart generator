@@ -1,6 +1,7 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import pandas as pd
+import plotly.express as px
 import plotly.io as pio
 import sqlite3
 import openai
@@ -13,8 +14,7 @@ app = FastAPI()
 openai.api_key = 'your_openai_api_key'  # Replace with your OpenAI API key
 
 class ChartRequest(BaseModel):
-    table_names: list[str]
-    columns: list[list[str]]
+    table_name: str
     user_prompt: str
 
 def get_data_from_db(table_name: str):
@@ -36,12 +36,15 @@ def generate_chart_code(prompt: str):
 @app.post("/generate_chart/")
 async def generate_chart(request: ChartRequest):
     # Fetch data from the database
-    data_frames = {table_name: get_data_from_db(table_name) for table_name in request.table_names}
+    try:
+        df = get_data_from_db(request.table_name)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Table {request.table_name} not found")
 
     # Prepare the context for OpenAI
     context = {
-        "table_names": request.table_names,
-        "columns": request.columns
+        "table_name": request.table_name,
+        "columns": df.columns.tolist()
     }
     context_json = json.dumps(context)
     prompt = f"Context: {context_json}\n{request.user_prompt}"
@@ -50,8 +53,8 @@ async def generate_chart(request: ChartRequest):
     chart_code = generate_chart_code(prompt)
 
     # Execute the chart code
-    local_vars = {}
-    exec(chart_code, {"pd": pd, "px": px, "data_frames": data_frames}, local_vars)
+    local_vars = {"pd": pd, "px": px, "df": df}
+    exec(chart_code, {}, local_vars)
     fig = local_vars.get("fig")
 
     if fig is None:
