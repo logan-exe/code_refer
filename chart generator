@@ -1,0 +1,63 @@
+from fastapi import FastAPI, Request
+from pydantic import BaseModel
+import pandas as pd
+import plotly.io as pio
+import sqlite3
+import openai
+import json
+
+# Initialize FastAPI
+app = FastAPI()
+
+# Initialize OpenAI
+openai.api_key = 'your_openai_api_key'  # Replace with your OpenAI API key
+
+class ChartRequest(BaseModel):
+    table_names: list[str]
+    columns: list[list[str]]
+    user_prompt: str
+
+def get_data_from_db(table_name: str):
+    conn = sqlite3.connect('example.db')
+    query = f"SELECT * FROM {table_name}"
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    return df
+
+def generate_chart_code(prompt: str):
+    response = openai.Completion.create(
+        engine="davinci-codex",
+        prompt=prompt,
+        max_tokens=200,
+        temperature=0.5
+    )
+    return response.choices[0].text.strip()
+
+@app.post("/generate_chart/")
+async def generate_chart(request: ChartRequest):
+    # Fetch data from the database
+    data_frames = {table_name: get_data_from_db(table_name) for table_name in request.table_names}
+
+    # Prepare the context for OpenAI
+    context = {
+        "table_names": request.table_names,
+        "columns": request.columns
+    }
+    context_json = json.dumps(context)
+    prompt = f"Context: {context_json}\n{request.user_prompt}"
+
+    # Get the chart generation code from OpenAI
+    chart_code = generate_chart_code(prompt)
+
+    # Execute the chart code
+    local_vars = {}
+    exec(chart_code, {"pd": pd, "px": px, "data_frames": data_frames}, local_vars)
+    fig = local_vars.get("fig")
+
+    if fig is None:
+        return {"error": "Failed to generate chart"}
+
+    # Generate the HTML for the Plotly chart
+    chart_html = pio.to_html(fig, full_html=False)
+
+    return {"chart_html": chart_html}
