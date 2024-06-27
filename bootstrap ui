@@ -1,0 +1,79 @@
+import React, { useState } from 'react';
+
+const data = [
+  { category: 'Fruits', items: ['Apple', 'Banana', 'Orange'] },
+  { category: 'Vegetables', items: ['Carrot', 'Broccoli', 'Spinach'] },
+  { category: 'Dairy', items: ['Milk', 'Cheese', 'Yogurt'] }
+];
+
+const App = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const filteredData = data.map(category => ({
+    ...category,
+    items: category.items.filter(item =>
+      item.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }));
+
+  return (
+    <div className="container-fluid">
+      <div className="row">
+        <div className="col-md-8 border">
+          <div className="p-3">
+            <h1>Center Container</h1>
+            <p>This is the center container.</p>
+          </div>
+        </div>
+        <div className="col-md-4 border" style={{ height: '100vh', overflowY: 'auto' }}>
+          <div className="p-3">
+            <form>
+              <div className="mb-3">
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Search"
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                />
+              </div>
+              <button type="button" className="btn btn-primary">Search</button>
+            </form>
+            <div className="mt-3">
+              {filteredData.map((category, idx) => (
+                <div key={idx} className="mb-2">
+                  <button
+                    className="btn btn-success dropdown-toggle w-100 text-left"
+                    type="button"
+                    id={`dropdown-${idx}`}
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                  >
+                    {category.category}
+                  </button>
+                  <ul className="dropdown-menu w-100" aria-labelledby={`dropdown-${idx}`}>
+                    {category.items.length > 0 ? (
+                      category.items.map((item, itemIdx) => (
+                        <li key={itemIdx}>
+                          <a className="dropdown-item" href="#">{item}</a>
+                        </li>
+                      ))
+                    ) : (
+                      <li><span className="dropdown-item">No items found</span></li>
+                    )}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;
