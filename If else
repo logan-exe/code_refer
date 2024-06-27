@@ -1,0 +1,234 @@
+import React, { useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+
+
+const ConditionBuilder = () => {
+  const [conditions, setConditions] = useState([]);
+  const [jsonOutput, setJsonOutput] = useState('');
+
+  const addCondition = (parentId, type) => {
+    const newCondition = {
+      id: uuidv4(),
+      type: type,
+      conditions: [{ id: uuidv4(), left: '', operator: '', right: '' }],
+      action: '',
+      children: []
+    };
+    if (parentId) {
+      const updatedConditions = addNestedCondition(conditions, parentId, newCondition);
+      setConditions(updatedConditions);
+    } else {
+      setConditions([...conditions, newCondition]);
+    }
+  };
+
+  const addNestedCondition = (nodes, parentId, newCondition) => {
+    return nodes.map(node => {
+      if (node.id === parentId) {
+        return { ...node, children: [...node.children, newCondition] };
+      } else if (node.children.length > 0) {
+        return { ...node, children: addNestedCondition(node.children, parentId, newCondition) };
+      } else {
+        return node;
+      }
+    });
+  };
+
+  const updateConditionPart = (nodeId, conditionId, key, value) => {
+    const updatedConditions = updateNestedConditionPart(conditions, nodeId, conditionId, key, value);
+    setConditions(updatedConditions);
+  };
+
+  const updateNestedConditionPart = (nodes, nodeId, conditionId, key, value) => {
+    return nodes.map(node => {
+      if (node.id === nodeId) {
+        return {
+          ...node,
+          conditions: node.conditions.map(condition =>
+            condition.id === conditionId ? { ...condition, [key]: value } : condition
+          )
+        };
+      } else if (node.children.length > 0) {
+        return { ...node, children: updateNestedConditionPart(node.children, nodeId, conditionId, key, value) };
+      } else {
+        return node;
+      }
+    });
+  };
+
+  const updateConditionType = (nodeId, value) => {
+    const updatedConditions = updateNestedConditionType(conditions, nodeId, value);
+    setConditions(updatedConditions);
+  };
+
+  const updateNestedConditionType = (nodes, nodeId, value) => {
+    return nodes.map(node => {
+      if (node.id === nodeId) {
+        return { ...node, type: value };
+      } else if (node.children.length > 0) {
+        return { ...node, children: updateNestedConditionType(node.children, nodeId, value) };
+      } else {
+        return node;
+      }
+    });
+  };
+
+  const updateAction = (id, value) => {
+    const updatedConditions = updateNestedAction(conditions, id, value);
+    setConditions(updatedConditions);
+  };
+
+  const updateNestedAction = (nodes, id, value) => {
+    return nodes.map(node => {
+      if (node.id === id) {
+        return { ...node, action: value };
+      } else if (node.children.length > 0) {
+        return { ...node, children: updateNestedAction(node.children, id, value) };
+      } else {
+        return node;
+      }
+    });
+  };
+
+  const addConditionPart = (nodeId) => {
+    const updatedConditions = addNestedConditionPart(conditions, nodeId, { id: uuidv4(), left: '', operator: '', right: '' });
+    setConditions(updatedConditions);
+  };
+
+  const addNestedConditionPart = (nodes, nodeId, newConditionPart) => {
+    return nodes.map(node => {
+      if (node.id === nodeId) {
+        return {
+          ...node,
+          conditions: [...node.conditions, newConditionPart]
+        };
+      } else if (node.children.length > 0) {
+        return { ...node, children: addNestedConditionPart(node.children, nodeId, newConditionPart) };
+      } else {
+        return node;
+      }
+    });
+  };
+
+  const deleteCondition = (id) => {
+    const updatedConditions = deleteNestedCondition(conditions, id);
+    setConditions(updatedConditions);
+  };
+
+  const deleteNestedCondition = (nodes, id) => {
+    return nodes.filter(node => node.id !== id).map(node => ({
+      ...node,
+      children: deleteNestedCondition(node.children, id)
+    }));
+  };
+
+  const renderConditions = (nodes, level = 0) => {
+    return nodes.map(node => (
+      <div key={node.id} className="card mt-3" style={{ marginLeft: level * 20 + 'px' }}>
+        <div className="card-body">
+          <div className="form-group">
+            <select className="form-control" value={node.type} onChange={(e) => updateConditionType(node.id, e.target.value)}>
+              <option value="if">IF</option>
+              <option value="elseif">ELSE IF</option>
+              <option value="else">ELSE</option>
+              <option value="default">DEFAULT</option>
+            </select>
+          </div>
+          {node.type !== 'else' && node.type !== 'default' && node.conditions.map(condition => (
+            <div key={condition.id} className="form-row align-items-center mb-2">
+              <div className="col">
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Condition Left"
+                  value={condition.left}
+                  onChange={(e) => updateConditionPart(node.id, condition.id, 'left', e.target.value)}
+                />
+              </div>
+              <div className="col">
+                <select
+                  className="form-control"
+                  value={condition.operator}
+                  onChange={(e) => updateConditionPart(node.id, condition.id, 'operator', e.target.value)}
+                >
+                  <option value="==">==</option>
+                  <option value="!=">!=</option>
+                  {/* <option value=">">></option>
+                  <option value="<"><</option>
+                  <option value=">=">>=</option>
+                  <option value="<="><=</option> */}
+                </select>
+              </div>
+              <div className="col">
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Condition Right"
+                  value={condition.right}
+                  onChange={(e) => updateConditionPart(node.id, condition.id, 'right', e.target.value)}
+                />
+              </div>
+            </div>
+          ))}
+          {node.type !== 'else' && node.type !== 'default' && (
+            <button className="btn btn-secondary btn-sm mb-2" onClick={() => addConditionPart(node.id)}>Add Condition</button>
+          )}
+          <div className="form-group mt-2">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Action"
+              value={node.action}
+              onChange={(e) => updateAction(node.id, e.target.value)}
+            />
+          </div>
+          <div>
+            <button className="btn btn-primary btn-sm mr-2" onClick={() => addCondition(node.id, 'if')}>Add IF</button>
+            <button className="btn btn-primary btn-sm mr-2" onClick={() => addCondition(node.id, 'elseif')}>Add ELSE IF</button>
+            <button className="btn btn-primary btn-sm mr-2" onClick={() => addCondition(node.id, 'else')}>Add ELSE</button>
+            <button className="btn btn-primary btn-sm mr-2" onClick={() => addCondition(node.id, 'default')}>Add DEFAULT</button>
+            <button className="btn btn-danger btn-sm" onClick={() => deleteCondition(node.id)}>Delete</button>
+          </div>
+          {node.children.length > 0 && renderConditions(node.children, level + 1)}
+        </div>
+      </div>
+    ));
+  };
+
+  const generateJSON = () => {
+    const createJSON = (nodes) => {
+      let result = {};
+      nodes.forEach(node => {
+        const conditionStrings = node.conditions.map(condition => `${condition.left} ${condition.operator} ${condition.right}`).join(' and ');
+        let innerResult = {
+          condition: conditionStrings,
+          action: node.action
+        };
+        if (node.children.length > 0) {
+          innerResult = { ...innerResult, ...createJSON(node.children) };
+        }
+        result[node.type] = innerResult;
+      });
+      return result;
+    };
+
+    const jsonOutput = createJSON(conditions);
+    setJsonOutput(JSON.stringify(jsonOutput, null, 2));
+  };
+
+  return (
+    <div className="container mt-5">
+      <button className="btn btn-success" onClick={() => addCondition(null, 'if')}>Add Statement</button>
+      {renderConditions(conditions)}
+      <button className="btn btn-warning mt-3" onClick={generateJSON}>Generate JSON</button>
+      {jsonOutput && (
+        <div className="mt-3">
+          <h4>Generated JSON</h4>
+          <pre>{jsonOutput}</pre>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ConditionBuilder;
