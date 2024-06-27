@@ -2,12 +2,27 @@ import React, { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 
-const ConditionBuilder = () => {
-  const [conditions, setConditions] = useState([]);
-  const [jsonOutput, setJsonOutput] = useState('');
+interface Condition {
+  id: string;
+  left: string;
+  operator: string;
+  right: string;
+}
 
-  const addCondition = (parentId, type) => {
-    const newCondition = {
+interface ConditionNode {
+  id: string;
+  type: string;
+  conditions: Condition[];
+  action: string;
+  children: ConditionNode[];
+}
+
+const ConditionBuilder: React.FC = () => {
+  const [conditions, setConditions] = useState<ConditionNode[]>([]);
+  const [jsonOutput, setJsonOutput] = useState<string>('');
+
+  const addCondition = (parentId: string | null, type: string) => {
+    const newCondition: ConditionNode = {
       id: uuidv4(),
       type: type,
       conditions: [{ id: uuidv4(), left: '', operator: '', right: '' }],
@@ -22,7 +37,7 @@ const ConditionBuilder = () => {
     }
   };
 
-  const addNestedCondition = (nodes, parentId, newCondition) => {
+  const addNestedCondition = (nodes: ConditionNode[], parentId: string, newCondition: ConditionNode): ConditionNode[] => {
     return nodes.map(node => {
       if (node.id === parentId) {
         return { ...node, children: [...node.children, newCondition] };
@@ -34,20 +49,30 @@ const ConditionBuilder = () => {
     });
   };
 
-  const updateConditionPart = (nodeId, conditionId, key, value) => {
+  const updateConditionPart = (nodeId: string, conditionId: string | null, key: keyof Condition, value: string) => {
     const updatedConditions = updateNestedConditionPart(conditions, nodeId, conditionId, key, value);
     setConditions(updatedConditions);
   };
 
-  const updateNestedConditionPart = (nodes, nodeId, conditionId, key, value) => {
+  const updateNestedConditionPart = (
+    nodes: ConditionNode[],
+    nodeId: string,
+    conditionId: string | null,
+    key: keyof Condition,
+    value: string
+  ): ConditionNode[] => {
     return nodes.map(node => {
       if (node.id === nodeId) {
-        return {
-          ...node,
-          conditions: node.conditions.map(condition =>
-            condition.id === conditionId ? { ...condition, [key]: value } : condition
-          )
-        };
+        if (conditionId) {
+          return {
+            ...node,
+            conditions: node.conditions.map(condition =>
+              condition.id === conditionId ? { ...condition, [key]: value } : condition
+            )
+          };
+        } else {
+          return { ...node, type: value };
+        }
       } else if (node.children.length > 0) {
         return { ...node, children: updateNestedConditionPart(node.children, nodeId, conditionId, key, value) };
       } else {
@@ -56,29 +81,12 @@ const ConditionBuilder = () => {
     });
   };
 
-  const updateConditionType = (nodeId, value) => {
-    const updatedConditions = updateNestedConditionType(conditions, nodeId, value);
-    setConditions(updatedConditions);
-  };
-
-  const updateNestedConditionType = (nodes, nodeId, value) => {
-    return nodes.map(node => {
-      if (node.id === nodeId) {
-        return { ...node, type: value };
-      } else if (node.children.length > 0) {
-        return { ...node, children: updateNestedConditionType(node.children, nodeId, value) };
-      } else {
-        return node;
-      }
-    });
-  };
-
-  const updateAction = (id, value) => {
+  const updateAction = (id: string, value: string) => {
     const updatedConditions = updateNestedAction(conditions, id, value);
     setConditions(updatedConditions);
   };
 
-  const updateNestedAction = (nodes, id, value) => {
+  const updateNestedAction = (nodes: ConditionNode[], id: string, value: string): ConditionNode[] => {
     return nodes.map(node => {
       if (node.id === id) {
         return { ...node, action: value };
@@ -90,12 +98,12 @@ const ConditionBuilder = () => {
     });
   };
 
-  const addConditionPart = (nodeId) => {
+  const addConditionPart = (nodeId: string) => {
     const updatedConditions = addNestedConditionPart(conditions, nodeId, { id: uuidv4(), left: '', operator: '', right: '' });
     setConditions(updatedConditions);
   };
 
-  const addNestedConditionPart = (nodes, nodeId, newConditionPart) => {
+  const addNestedConditionPart = (nodes: ConditionNode[], nodeId: string, newConditionPart: Condition): ConditionNode[] => {
     return nodes.map(node => {
       if (node.id === nodeId) {
         return {
@@ -110,24 +118,24 @@ const ConditionBuilder = () => {
     });
   };
 
-  const deleteCondition = (id) => {
+  const deleteCondition = (id: string) => {
     const updatedConditions = deleteNestedCondition(conditions, id);
     setConditions(updatedConditions);
   };
 
-  const deleteNestedCondition = (nodes, id) => {
+  const deleteNestedCondition = (nodes: ConditionNode[], id: string): ConditionNode[] => {
     return nodes.filter(node => node.id !== id).map(node => ({
       ...node,
       children: deleteNestedCondition(node.children, id)
     }));
   };
 
-  const renderConditions = (nodes, level = 0) => {
+  const renderConditions = (nodes: ConditionNode[], level = 0): JSX.Element[] => {
     return nodes.map(node => (
       <div key={node.id} className="card mt-3" style={{ marginLeft: level * 20 + 'px' }}>
         <div className="card-body">
           <div className="form-group">
-            <select className="form-control" value={node.type} onChange={(e) => updateConditionType(node.id, e.target.value)}>
+            <select className="form-control" value={node.type} onChange={(e) => updateConditionPart(node.id, null, 'type' as keyof Condition, e.target.value)}>
               <option value="if">IF</option>
               <option value="elseif">ELSE IF</option>
               <option value="else">ELSE</option>
@@ -196,11 +204,11 @@ const ConditionBuilder = () => {
   };
 
   const generateJSON = () => {
-    const createJSON = (nodes) => {
-      let result = {};
+    const createJSON = (nodes: ConditionNode[]): any => {
+      let result: any = {};
       nodes.forEach(node => {
         const conditionStrings = node.conditions.map(condition => `${condition.left} ${condition.operator} ${condition.right}`).join(' and ');
-        let innerResult = {
+        let innerResult: any = {
           condition: conditionStrings,
           action: node.action
         };
